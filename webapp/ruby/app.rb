@@ -106,17 +106,20 @@ module Isuconp
             post[:id]
           ).first[:count]
 
-          query = 'SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC'
+          query_with_user_joined = 'SELECT `comments`.*, `users`.`account_name` AS `account_name` FROM `comments` INNER JOIN `users` ON `comments`.`user_id` = `users`.`id` WHERE `comments`.`post_id` = ? ORDER BY `comments`.`created_at` DESC'
+          # query = 'SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC'
           unless all_comments
-            query += ' LIMIT 3'
+            query_with_user_joined += ' LIMIT 3'
+            # query += ' LIMIT 3'
           end
-          comments = db.prepare(query).execute(
+          comments = db.prepare(query_with_user_joined).execute(
             post[:id]
           ).to_a
           comments.each do |comment|
-            comment[:user] = db.prepare('SELECT * FROM `users` WHERE `id` = ?').execute(
-              comment[:user_id]
-            ).first
+            comment[:user] = { account_name: comment[:account_name] }
+            # comment[:user] = db.prepare('SELECT * FROM `users` WHERE `id` = ?').execute(
+            #   comment[:user_id]
+            # ).first
           end
           post[:comments] = comments.reverse
 
@@ -344,7 +347,7 @@ module Isuconp
         return ""
       end
 
-      post = db.prepare('SELECT * FROM `posts` WHERE `id` = ?').execute(params[:id].to_i).first
+      post = db.prepare('SELECT * FROM `posts` WHERE `id` = ? LIMIT 1').execute(params[:id].to_i).first
 
       if (params[:ext] == "jpg" && post[:mime] == "image/jpeg") ||
           (params[:ext] == "png" && post[:mime] == "image/png") ||
